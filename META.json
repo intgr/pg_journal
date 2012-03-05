@@ -1,21 +1,20 @@
 {
    "name": "pg_journal",
-   "abstract": "A short description",
-   "description": "A long description",
+   "abstract": "Log to systemd journal",
+   "description": "Sends logged messages to the systemd journal",
    "version": "0.0.1",
-   "maintainer": "The maintainer's name",
+   "maintainer": "Marti Raudsepp <marti@juffo.org>",
    "license": "postgresql",
    "provides": {
       "pg_journal": {
-         "abstract": "A short description",
-         "file": "sql/pg_journal.sql",
+         "abstract": "Log to systemd journal",
          "docfile": "doc/pg_journal.md",
          "version": "0.0.1"
       }
    },
    "release_status": "unstable",
 
-   "generated_by": "The maintainer's name",
+   "generated_by": "Marti Raudsepp <marti@juffo.org>",
 
 
    "meta-spec": {
