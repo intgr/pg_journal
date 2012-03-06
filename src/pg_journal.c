@@ -4,6 +4,8 @@
 
 #include "postgres.h"
 #include "fmgr.h"
+#include "miscadmin.h"
+#include "libpq/libpq-be.h"
 #include "tcop/tcopprot.h"
 #include "utils/elog.h"
 #include "utils/memutils.h"
@@ -17,10 +19,6 @@ void _PG_fini(void);
 
 static void do_emit_log(ErrorData *edata);
 static void journal_emit_log(ErrorData *edata);
-
-/**** Constants */
-
-#define MAX_FIELDS	 10 /* NB! Keep this in sync when adding fields! */
 
 /**** Globals */
 
@@ -156,32 +154,31 @@ append_fmt(struct iovec *field, const char *fmt, ...)
 	field->iov_len  = buf.len;
 }
 
+#define MAX_FIELDS	 17 /* NB! Keep this in sync when adding fields! */
+
 static void
 journal_emit_log(ErrorData *edata)
 {
+	struct iovec fields[MAX_FIELDS];
 	MemoryContext oldcontext;
 	int			ret;
-	char	   *message_id = NULL;
-	struct iovec fields[MAX_FIELDS];
 	int			n = 0;
 
 	if (!edata->output_to_server)
 		return;
 
+	/* We should already be in ErrorContext, but just make 100% sure */
 	oldcontext = MemoryContextSwitchTo(ErrorContext);
 
 	/* Assign a MESSAGE_ID to statement logging */
 	if (edata->hide_stmt && debug_query_string != NULL &&
 		memcmp(edata->message, "statement: ", 11) == 0)
 	{
-		message_id = "a63699368b304b4cb51bce5644736306";
+		append_string(&fields[n++], "MESSAGE_ID=", "a63699368b304b4cb51bce5644736306");
 	}
 
 	append_fmt(&fields[n++], "PRIORITY=%d", elevel_to_syslog(edata->elevel));
 	append_fmt(&fields[n++], "PGLEVEL=%d", edata->elevel);
-
-	if (message_id)
-		append_string(&fields[n++], "MESSAGE_ID=", message_id);
 
 	if (edata->sqlerrcode)
 		append_string(&fields[n++], "SQLSTATE=",
@@ -207,6 +204,44 @@ journal_emit_log(ErrorData *edata)
 	if (!edata->hide_stmt && debug_query_string)
 		append_string(&fields[n++], "STATEMENT=", debug_query_string);
 
+	/*
+	 * These field names are also used by systemd itself. Not sure how useful
+	 * they are in practice.
+	 */
+	if (edata->filename)
+		append_string(&fields[n++], "CODE_FILE=", edata->filename);
+	if (edata->lineno > 0)
+		append_fmt(&fields[n++],    "CODE_LINE=%d", edata->lineno);
+	if (edata->funcname)
+		append_string(&fields[n++], "CODE_FUNCTION=", edata->funcname);
+
+	/*
+	 * Non-ErrorData fields. These field names are modeled after libpq
+	 * environment vars:
+	 * http://www.postgresql.org/docs/current/static/libpq-envars.html
+	 */
+	if (MyProcPort)
+	{
+		if (MyProcPort->user_name)
+			append_string(&fields[n++], "PGUSER=", MyProcPort->user_name);
+
+		if (MyProcPort->database_name)
+			append_string(&fields[n++], "PGDATABASE=", MyProcPort->database_name);
+
+		if (MyProcPort->remote_host && MyProcPort->remote_port &&
+			MyProcPort->remote_port[0] != '\0')
+		{
+			append_fmt(&fields[n++], "PGHOST=%s:%s", MyProcPort->remote_host,
+					   MyProcPort->remote_port);
+		}
+		else if (MyProcPort->remote_host)
+			append_string(&fields[n++], "PGHOST=", MyProcPort->remote_host);
+	}
+
+	if (application_name)
+		append_string(&fields[n++], "PGAPPNAME=", application_name);
+
+	/* Done collecting fields. */
 	if (n > MAX_FIELDS)
 	{
 		/*
