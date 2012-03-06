@@ -121,37 +121,52 @@ elevel_to_syslog(int elevel)
 	}
 }
 
+/*
+ * This is a slight abuse of the StringInfo system. We're simply concatenating
+ * together lots of fields and taking their pointers and lengths.
+ *
+ * This is better than using a separate StringInfo for each field, since
+ * each StringInfo consumes 1024 bytes by default. A typical user message, 12
+ * fields, would then consume 12 kilobytes minimum!
+ */
 static void
-append_string(struct iovec *field, const char *key, const char *value)
+append_string(StringInfo str, struct iovec *field, const char *key, const char *value)
 {
-	StringInfoData buf;
+	size_t old_len = str->len;
 
-	initStringInfo(&buf);
-	appendStringInfoString(&buf, key);
-	appendStringInfoString(&buf, value);
+	appendStringInfoString(str, key);
+	appendStringInfoString(str, value);
 
-	field->iov_base = buf.data;
-	field->iov_len  = buf.len;
+	field->iov_base = &str->data[old_len];
+	field->iov_len  = str->len - old_len;
 }
 
 static void
-append_fmt(struct iovec *field, const char *fmt, ...)
+append_fmt(StringInfo str, struct iovec *field, const char *fmt, ...)
 /* This extension allows gcc to check the format string */
-__attribute__((format(PG_PRINTF_ATTRIBUTE, 2, 3)));
+__attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
 
 static void
-append_fmt(struct iovec *field, const char *fmt, ...)
+append_fmt(StringInfo str, struct iovec *field, const char *fmt, ...)
 {
-	va_list		args;
-	StringInfoData buf;
+	size_t old_len = str->len;
+	va_list args;
+	bool success;
 
-	initStringInfo(&buf);
-	va_start(args, fmt);
-	appendStringInfoVA(&buf, fmt, args);
-	va_end(args);
+	/* appendStringInfoVA can fail due to insufficient space */
+	while (1) {
+		va_start(args, fmt);
+		success = appendStringInfoVA(str, fmt, args);
+		va_end(args);
 
-	field->iov_base = buf.data;
-	field->iov_len  = buf.len;
+		if (success)
+			break;
+
+		enlargeStringInfo(str, 256);
+	}
+
+	field->iov_base = &str->data[old_len];
+	field->iov_len  = str->len - old_len;
 }
 
 #define MAX_FIELDS	 17 /* NB! Keep this in sync when adding fields! */
@@ -161,6 +176,7 @@ journal_emit_log(ErrorData *edata)
 {
 	struct iovec fields[MAX_FIELDS];
 	MemoryContext oldcontext;
+	StringInfoData buf;
 	int			ret;
 	int			n = 0;
 
@@ -170,50 +186,53 @@ journal_emit_log(ErrorData *edata)
 	/* We should already be in ErrorContext, but just make 100% sure */
 	oldcontext = MemoryContextSwitchTo(ErrorContext);
 
+	initStringInfo(&buf);
+
 	/* Assign a MESSAGE_ID to statement logging */
 	if (edata->hide_stmt && debug_query_string != NULL &&
 		memcmp(edata->message, "statement: ", 11) == 0)
 	{
-		append_string(&fields[n++], "MESSAGE_ID=", "a63699368b304b4cb51bce5644736306");
+		append_string(&buf, &fields[n++], "MESSAGE_ID=",
+				"a63699368b304b4cb51bce5644736306");
 	}
 
-	append_fmt(&fields[n++], "PRIORITY=%d", elevel_to_syslog(edata->elevel));
-	append_fmt(&fields[n++], "PGLEVEL=%d", edata->elevel);
+	append_fmt(&buf, &fields[n++], "PRIORITY=%d", elevel_to_syslog(edata->elevel));
+	append_fmt(&buf, &fields[n++], "PGLEVEL=%d", edata->elevel);
 
 	if (edata->sqlerrcode)
-		append_string(&fields[n++], "SQLSTATE=",
+		append_string(&buf, &fields[n++], "SQLSTATE=",
 										 unpack_sql_state(edata->sqlerrcode));
 
 	if (edata->message)
-		append_string(&fields[n++], "MESSAGE=", edata->message);
+		append_string(&buf, &fields[n++], "MESSAGE=", edata->message);
 
 	if (edata->detail_log)
-		append_string(&fields[n++], "DETAIL=", edata->detail_log);
+		append_string(&buf, &fields[n++], "DETAIL=", edata->detail_log);
 	else if (edata->detail)
-		append_string(&fields[n++], "DETAIL=", edata->detail);
+		append_string(&buf, &fields[n++], "DETAIL=", edata->detail);
 
 	if (edata->hint)
-		append_string(&fields[n++], "HINT=", edata->hint);
+		append_string(&buf, &fields[n++], "HINT=", edata->hint);
 
 	if (edata->internalquery)
-		append_string(&fields[n++], "QUERY=", edata->internalquery);
+		append_string(&buf, &fields[n++], "QUERY=", edata->internalquery);
 
 	if (edata->context)
-		append_string(&fields[n++], "CONTEXT=", edata->context);
+		append_string(&buf, &fields[n++], "CONTEXT=", edata->context);
 
 	if (!edata->hide_stmt && debug_query_string)
-		append_string(&fields[n++], "STATEMENT=", debug_query_string);
+		append_string(&buf, &fields[n++], "STATEMENT=", debug_query_string);
 
 	/*
 	 * These field names are also used by systemd itself. Not sure how useful
 	 * they are in practice.
 	 */
 	if (edata->filename)
-		append_string(&fields[n++], "CODE_FILE=", edata->filename);
+		append_string(&buf, &fields[n++], "CODE_FILE=", edata->filename);
 	if (edata->lineno > 0)
-		append_fmt(&fields[n++],    "CODE_LINE=%d", edata->lineno);
+		append_fmt(&buf, &fields[n++],    "CODE_LINE=%d", edata->lineno);
 	if (edata->funcname)
-		append_string(&fields[n++], "CODE_FUNCTION=", edata->funcname);
+		append_string(&buf, &fields[n++], "CODE_FUNCTION=", edata->funcname);
 
 	/*
 	 * Non-ErrorData fields. These field names are modeled after libpq
@@ -223,23 +242,23 @@ journal_emit_log(ErrorData *edata)
 	if (MyProcPort)
 	{
 		if (MyProcPort->user_name)
-			append_string(&fields[n++], "PGUSER=", MyProcPort->user_name);
+			append_string(&buf, &fields[n++], "PGUSER=", MyProcPort->user_name);
 
 		if (MyProcPort->database_name)
-			append_string(&fields[n++], "PGDATABASE=", MyProcPort->database_name);
+			append_string(&buf, &fields[n++], "PGDATABASE=", MyProcPort->database_name);
 
 		if (MyProcPort->remote_host && MyProcPort->remote_port &&
 			MyProcPort->remote_port[0] != '\0')
 		{
-			append_fmt(&fields[n++], "PGHOST=%s:%s", MyProcPort->remote_host,
+			append_fmt(&buf, &fields[n++], "PGHOST=%s:%s", MyProcPort->remote_host,
 					   MyProcPort->remote_port);
 		}
 		else if (MyProcPort->remote_host)
-			append_string(&fields[n++], "PGHOST=", MyProcPort->remote_host);
+			append_string(&buf, &fields[n++], "PGHOST=", MyProcPort->remote_host);
 	}
 
 	if (application_name)
-		append_string(&fields[n++], "PGAPPNAME=", application_name);
+		append_string(&buf, &fields[n++], "PGAPPNAME=", application_name);
 
 	/* Done collecting fields. */
 	if (n > MAX_FIELDS)
