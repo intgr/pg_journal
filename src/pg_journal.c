@@ -20,25 +20,7 @@ static void journal_emit_log(ErrorData *edata);
 
 /**** Constants */
 
-#define MAX_LOGLEVEL 23
 #define MAX_FIELDS	 10 /* NB! Keep this in sync when adding fields! */
-
-/* Maps pg log levels to syslog levels */
-static const int loglevel_map[MAX_LOGLEVEL] = {
-	[DEBUG5]	= LOG_DEBUG,
-	[DEBUG4]	= LOG_DEBUG,
-	[DEBUG3]	= LOG_DEBUG,
-	[DEBUG2]	= LOG_DEBUG,
-	[DEBUG1]	= LOG_DEBUG,
-	[LOG]		= LOG_INFO,
-	[COMMERROR]	= LOG_INFO,
-	[INFO]		= LOG_INFO,
-	[NOTICE]	= LOG_NOTICE,
-	[WARNING]	= LOG_WARNING,
-	[ERROR]		= LOG_ERR,
-	[FATAL]		= LOG_CRIT,
-	[PANIC]		= LOG_ALERT,
-};
 
 /**** Globals */
 
@@ -113,14 +95,32 @@ do_emit_log(ErrorData *edata)
 }
 
 static int
-map_priority(int pg_prio)
+elevel_to_syslog(int elevel)
 {
-	if (pg_prio >= MAX_LOGLEVEL || pg_prio < 0)
-		/* Out of range -- log with EMERG so the message is noticed */
-		return LOG_EMERG;
-
-	/* Unknown log levels initialized to 0 which is LOG_EMERG */
-	return loglevel_map[pg_prio];
+	/* See utils/error/elog.c function send_message_to_server_log */
+	switch (elevel)
+	{
+		case DEBUG5:
+		case DEBUG4:
+		case DEBUG3:
+		case DEBUG2:
+		case DEBUG1:
+			return LOG_DEBUG;
+		case LOG:
+		case COMMERROR:
+		case INFO:
+			return LOG_INFO;
+		case NOTICE:
+		case WARNING:
+			return LOG_NOTICE;
+		case ERROR:
+			return LOG_WARNING;
+		case FATAL:
+			return LOG_ERR;
+		case PANIC:
+		default:
+			return LOG_CRIT;
+	}
 }
 
 static void
@@ -177,7 +177,7 @@ journal_emit_log(ErrorData *edata)
 		message_id = "a63699368b304b4cb51bce5644736306";
 	}
 
-	append_fmt(&fields[n++], "PRIORITY=%d", map_priority(edata->elevel));
+	append_fmt(&fields[n++], "PRIORITY=%d", elevel_to_syslog(edata->elevel));
 	append_fmt(&fields[n++], "PGLEVEL=%d", edata->elevel);
 
 	if (message_id)
