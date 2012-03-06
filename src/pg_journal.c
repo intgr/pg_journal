@@ -257,7 +257,7 @@ journal_emit_log(ErrorData *edata)
 			append_string(&buf, &fields[n++], "PGHOST=", MyProcPort->remote_host);
 	}
 
-	if (application_name)
+	if (application_name && application_name[0] != '\0')
 		append_string(&buf, &fields[n++], "PGAPPNAME=", application_name);
 
 	/* Done collecting fields. */
