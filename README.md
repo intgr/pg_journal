@@ -12,7 +12,10 @@ earlier versions, you need to patch and build your server manually. The
 necessary patch is included under `patches/logging-hooks.patch` (courtesy of
 Martin Pihlak).
 
-After satisfying that requirement, just do this:
+You also need a recent enough version of systemd (v38+) with the journal feature
+and library (`libsystemd-journal.so`) enabled.
+
+After satisfying these requirements, just do this:
 
     make
     make install
