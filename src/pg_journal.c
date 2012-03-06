@@ -43,18 +43,44 @@ static const int loglevel_map[MAX_LOGLEVEL] = {
 /**** Globals */
 
 static emit_log_hook_type prev_emit_log_hook = NULL;
-/* Just a safety measure to prevent recursive calls */
-static int in_hook = 0;
-/* If a failure occurs, just report the 1st time */
-static int reported_failure = 0;
+/* If a failure occurs, report it to the server log the first time */
+static bool reported_failure = false;
+/* GUC pg_journal.omit_server_log = off */
+static bool skip_server_log = false;
 
 /**** Implementation */
+
+/* Convinience wrapper for DefineCustomBoolVariable */
+static void
+DefineBoolVariable(const char *name, const char *short_desc, bool *value_addr)
+{
+	DefineCustomBoolVariable(name,
+			short_desc,
+			NULL,
+			value_addr,
+#if PG_VERSION_NUM >= 80400
+			false,				/* bootValue since 8.4 */
+			PGC_SUSET,
+			0,
+#else
+			PGC_USERSET,		/* 8.3 only allows USERSET custom params */
+#endif
+#if PG_VERSION_NUM >= 90100
+			NULL,				/* check_hook parameter since 9.1 */
+#endif
+			NULL,
+			NULL);
+}
 
 void
 _PG_init(void)
 {
 	prev_emit_log_hook = emit_log_hook;
 	emit_log_hook = do_emit_log;
+
+	DefineBoolVariable("pg_journal.skip_server_log",
+			"Skip messages from server log if journal logging succeeds",
+			&skip_server_log);
 }
 
 void
@@ -71,15 +97,18 @@ _PG_fini(void)
 static void
 do_emit_log(ErrorData *edata)
 {
+	static bool in_hook = false;
+
 	/* Call any previous hooks */
 	if (prev_emit_log_hook)
 		prev_emit_log_hook(edata);
 
-	if (in_hook == 0)
+	/* Protect from recursive calls */
+	if (! in_hook)
 	{
-		in_hook = 1;
+		in_hook = true;
 		journal_emit_log(edata);
-		in_hook = 0;
+		in_hook = false;
 	}
 }
 
@@ -178,7 +207,7 @@ journal_emit_log(ErrorData *edata)
 	if (!edata->hide_stmt && debug_query_string)
 		append_string(&fields[n++], "STATEMENT=", debug_query_string);
 
-	if (n >= MAX_FIELDS)
+	if (n > MAX_FIELDS)
 	{
 		/*
 		 * Oops, we've probably overwritten something else on the stack!
@@ -191,16 +220,22 @@ journal_emit_log(ErrorData *edata)
 
 	ret = sd_journal_sendv(fields, n);
 
-	if (ret < 0)
+	if (ret >= 0)
 	{
-		if (reported_failure == 0)
+		/* Successfully logged */
+		if (skip_server_log)
+			edata->output_to_server = false;
+	}
+	else
+	{
+		if (! reported_failure)
 		{
 			ereport(WARNING,
 					(errmsg("pg_journal: failed logging message with "
 							"%d fields: %s",
 							n, strerror(-ret))));
 			/* Prevent spamming the log if journal is failing */
-			reported_failure = 1;
+			reported_failure = true;
 		}
 	}
 
