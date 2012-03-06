@@ -1,0 +1,59 @@
+*** a/src/backend/utils/error/elog.c
+--- b/src/backend/utils/error/elog.c
+***************
+*** 136,141 **** static int	errordata_stack_depth = -1; /* index of topmost active frame */
+--- 136,150 ----
+  
+  static int	recursion_depth = 0;	/* to detect actual recursion */
+  
++ /*
++  * Hook for intercepting log messages. Note that the hook does not get
++  * called for messages that are supressed by GUC settings such as
++  * log_min_messages. Also note that logging hooks implemented as preload
++  * libraries will miss any log messages that are generated before the
++  * library is loaded.
++  */
++ emit_log_hook_type emit_log_hook = NULL;
++ 
+  /* buffers for formatted timestamps that might be used by both
+   * log_line_prefix and csv logs.
+   */
+***************
+*** 1276,1281 **** EmitErrorReport(void)
+--- 1285,1297 ----
+  	CHECK_STACK_DEPTH();
+  	oldcontext = MemoryContextSwitchTo(ErrorContext);
+  
++ 	/*
++ 	 * Call hooks for server messages. Note that the hook could opt to filter
++ 	 * the message so we need to recheck output_to_server afterwards.
++ 	 */
++ 	if (edata->output_to_server && emit_log_hook)
++ 		emit_log_hook(edata);
++ 
+  	/* Send to server log, if enabled */
+  	if (edata->output_to_server)
+  		send_message_to_server_log(edata);
+*** a/src/include/utils/elog.h
+--- b/src/include/utils/elog.h
+***************
+*** 327,332 **** typedef struct ErrorData
+--- 327,334 ----
+  	int			saved_errno;	/* errno at entry */
+  } ErrorData;
+  
++ typedef void (*emit_log_hook_type)(ErrorData *edata);
++ 
+  extern void EmitErrorReport(void);
+  extern ErrorData *CopyErrorData(void);
+  extern void FreeErrorData(ErrorData *edata);
+***************
+*** 347,352 **** typedef enum
+--- 349,355 ----
+  extern int	Log_error_verbosity;
+  extern char *Log_line_prefix;
+  extern int	Log_destination;
++ extern PGDLLIMPORT emit_log_hook_type emit_log_hook;
+  
+  /* Log destination bitmap */
+  #define LOG_DESTINATION_STDERR	 1
