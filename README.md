@@ -1,12 +1,20 @@
-pg_journal
-==========
+pg\_journal
+===========
 
-A long description
+This is a PostgreSQL preload module for sending log messages directly to the
+systemd journal log.
 
-To build it, just do this:
+Installation
+------------
+
+To use this module, you need PostgreSQL version 9.2 or later. To use with
+earlier versions, you need to patch and build your server manually. The
+necessary patch is included under `patches/logging-hooks.patch` (courtesy of
+Martin Pihlak).
+
+After satisfying that requirement, just do this:
 
     make
-    make installcheck
     make install
 
 If you encounter an error such as:
@@ -18,7 +26,6 @@ You need to use GNU make, which may well be installed on your system as
 
     gmake
     gmake install
-    gmake installcheck
 
 If you encounter an error such as:
 
@@ -29,52 +36,24 @@ package management system such as RPM to install PostgreSQL, be sure that the
 `-devel` package is also installed. If necessary tell the build process where
 to find it:
 
-    env PG_CONFIG=/path/to/pg_config make && make installcheck && make install
+    env PG_CONFIG=/path/to/pg_config make && make install
 
-And finally, if all that fails (and if you're on PostgreSQL 8.1 or lower, it
-likely will), copy the entire distribution directory to the `contrib/`
-subdirectory of the PostgreSQL source tree and try it there without
-`pg_config`:
+Once pg\_journal is installed, you can enable it in your configuration file.
+Find the `postgresql.conf` file (usually in your PostgreSQL data directory) and
+add the following line:
 
-    env NO_PGXS=1 make && make installcheck && make install
+    shared_preload_libaries = 'pg_journal'
 
-If you encounter an error such as:
+You need to restart your server for this to take effect. After that, log
+messages are automatically sent to journal.
 
-    ERROR:  must be owner of database regression
-
-You need to run the test suite using a super user, such as the default
-"postgres" super user:
-
-    make installcheck PGUSER=postgres
-
-Once pg_journal is installed, you can add it to a database. If you're running
-PostgreSQL 9.1.0 or greater, it's a simple as connecting to a database as a
-super user and running:
-
-    CREATE EXTENSION pg_journal;
-
-If you've upgraded your cluster to PostgreSQL 9.1 and already had pg_journal
-installed, you can upgrade it to a properly packaged extension with:
-
-    CREATE EXTENSION pg_journal FROM unpackaged;
-
-For versions of PostgreSQL less than 9.1.0, you'll need to run the
-installation script:
-
-    psql -d mydb -f /path/to/pgsql/share/contrib/pg_journal.sql
-
-If you want to install pg_journal and all of its supporting objects into a specific
-schema, use the `PGOPTIONS` environment variable to specify the schema, like
-so:
-
-    PGOPTIONS=--search_path=extensions psql -d mydb -f pg_journal.sql
-
-Dependencies
-------------
-The `pg_journal` data type has no dependencies other than PostgreSQL.
+For more details, please see the `doc/pg_journal` documentation file.
 
 Copyright and License
 ---------------------
 
-Copyright (c) 2012 The maintainer's name.
+Copyright (c) 2012 Marti Raudsepp
+
+pg\_journal and all related files are available under [The PostgreSQL
+License](http://www.opensource.org/licenses/PostgreSQL)
 
