@@ -123,7 +123,8 @@ elevel_to_syslog(int elevel)
 
 /*
  * This is a slight abuse of the StringInfo system. We're simply concatenating
- * together lots of fields and taking their pointers and lengths.
+ * together lots of fields and storing their lengths. Once the whole string
+ * is ready, we get pointers based on the lengths.
  *
  * This is better than using a separate StringInfo for each field, since
  * each StringInfo consumes 1024 bytes by default. A typical user message, 12
@@ -137,7 +138,6 @@ append_string(StringInfo str, struct iovec *field, const char *key, const char *
 	appendStringInfoString(str, key);
 	appendStringInfoString(str, value);
 
-	field->iov_base = &str->data[old_len];
 	field->iov_len  = str->len - old_len;
 }
 
@@ -165,7 +165,6 @@ append_fmt(StringInfo str, struct iovec *field, const char *fmt, ...)
 		enlargeStringInfo(str, 256);
 	}
 
-	field->iov_base = &str->data[old_len];
 	field->iov_len  = str->len - old_len;
 }
 
@@ -178,7 +177,9 @@ journal_emit_log(ErrorData *edata)
 	MemoryContext oldcontext;
 	StringInfoData buf;
 	int			ret;
+	int			i;
 	int			n = 0;
+	char	   *ptr;
 
 	if (!edata->output_to_server)
 		return;
@@ -260,7 +261,6 @@ journal_emit_log(ErrorData *edata)
 	if (application_name && application_name[0] != '\0')
 		append_string(&buf, &fields[n++], "PGAPPNAME=", application_name);
 
-	/* Done collecting fields. */
 	if (n > MAX_FIELDS)
 	{
 		/*
@@ -270,6 +270,18 @@ journal_emit_log(ErrorData *edata)
 		ereport(FATAL,
 				(errmsg("pg_journal: too many log fields (%d >= %d)",
 						n, MAX_FIELDS)));
+	}
+
+	/*
+	 * Done writing fields. Need to extract pointers to individual items, by
+	 * following field lengths. We couldn't do that before, since the string's
+	 * base address can move due to reallocations.
+	 */
+	ptr = buf.data;
+	for(i = 0; i < n; i++)
+	{
+		fields[i].iov_base = ptr;
+		ptr += fields[i].iov_len;
 	}
 
 	ret = sd_journal_sendv(fields, n);
