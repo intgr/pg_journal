@@ -4,6 +4,11 @@ pg\_journal
 This is a PostgreSQL preload module for sending log messages directly to the
 systemd journal log.
 
+Prerequisites:
+
+* PostgreSQL version 9.2+ (earlier versions supported with a server patch).
+* systemd v38 or newer with libsystemd-journal installed.
+
 Installation
 ------------
 

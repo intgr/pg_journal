@@ -7,12 +7,17 @@ Description
 This is a PostgreSQL preload module for sending log messages directly to the
 systemd journal log.
 
+Prerequisites:
+
+* PostgreSQL version 9.2+ (earlier versions supported with a server patch).
+* systemd v38 or newer with libsystemd-journal installed.
+
 Configuration
 -------------
 
-Once pg\_journal is installed, you can enable it in your configuration file.
-Find the `postgresql.conf` file (usually in your PostgreSQL data directory) and
-add the following line:
+Once pg\_journal is installed, you can enable it in the configuration file (see
+README.md for installation instructions). Find the `postgresql.conf` file
+(usually in your PostgreSQL data directory) and add the following line:
 
     shared_preload_libaries = 'pg_journal'
 
@@ -29,14 +34,60 @@ you can add the `skip_server_log` setting:
 Note that if journal logging fails for any reason, then pg\_journal falls back
 to the server log despite this setting, allowing you to debug the issue.
 
+Usage
+-----
+
+After making the configuration changes above and restarting, PostgreSQL should
+automatically start logging to journal. You can use the following command to
+see the latest log messages (like `tail -f`) from 'postgres' processes:
+
+    % systemd-journalctl -f _COMM=postgres
+    Mar 07 18:30:27 hostname postgres[16028]: loaded library "pg_journal"
+    Mar 07 18:30:27 hostname postgres[16030]: database system was shut down at 2012-03-07 18:30:26 EET
+    Mar 07 18:30:27 hostname postgres[16034]: autovacuum launcher started
+    Mar 07 18:30:27 hostname postgres[16028]: database system is ready to accept connections
+
+Note that unlike regular PostgreSQL logging, only the primary message of each
+error is displayed -- without DETAIL or HINT lines. **This will probably change
+in a future version.** Until then, you need to use journalctl in the verbose
+mode, which displays all logged fields (documented below):
+
+    % systemd-journalctl -f _COMM=postgres -o verbose
+    [...]
+    Wed, 07 Mar 2012 18:38:36 +0200 [...]
+        PRIORITY=6
+        PGLEVEL=15
+        MESSAGE=checkpoints are occurring too frequently (2 seconds apart)
+        HINT=Consider increasing the configuration parameter "checkpoint_segments".
+        CODE_FILE=checkpointer.c
+        CODE_LINE=488
+        CODE_FUNCTION=CheckpointerMain
+        _TRANSPORT=journal
+        [... other systemd-specific fields ...]
+    Wed, 07 Mar 2012 18:38:37 +0200 [...]
+        PRIORITY=4
+        PGLEVEL=20
+        SQLSTATE=57014
+        MESSAGE=canceling statement due to user request
+        STATEMENT=insert into foo select generate_series(1,10000000);
+        CODE_FILE=postgres.c
+        CODE_LINE=2914
+        CODE_FUNCTION=ProcessInterrupts
+        PGUSER=joe
+        PGDATABASE=sixpack
+        PGHOST=[local]
+        PGAPPNAME=psql
+        _TRANSPORT=journal
+        [...]
+
 Log fields
 ----------
 
 pg\_journal adds the following log fields to log messages:
 
-* `MESSAGE_ID`: only one message ID is defined,
+* `MESSAGE_ID`: Only one message ID is defined,
   `a63699368b304b4cb51bce5644736306`, for `log_statement` log messages.
-* `PRIORITY`: syslog priority level of message (number).
+* `PRIORITY`: Syslog priority level of message (number).
 * `PGLEVEL`: PostgreSQL log level (number).
 * `SQLSTATE`: SQL error code, [see PostgreSQL
   documentation](http://www.postgresql.org/docs/current/static/errcodes-appendix.html).
@@ -58,7 +109,7 @@ Support
 -------
 
   Bugs can be reported to pg\_journal's [GitHub issue
-  tracker](https://github.com/intgr/pg_journal).
+  tracker](https://github.com/intgr/pg_journal/issues).
 
 Author
 ------
