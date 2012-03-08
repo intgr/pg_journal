@@ -1,24 +1,34 @@
 {
-   "name": "pg_journal",
-   "abstract": "Log to systemd journal",
-   "description": "Sends logged messages to the systemd journal",
-   "version": "0.0.1",
-   "maintainer": "Marti Raudsepp <marti@juffo.org>",
-   "license": "postgresql",
-   "provides": {
-      "pg_journal": {
-         "abstract": "Log to systemd journal",
-         "docfile": "doc/pg_journal.md",
-         "version": "0.0.1"
-      }
-   },
-   "release_status": "unstable",
+  "name": "pg_journal",
+  "abstract": "Log to systemd journal",
+  "description": "Sends logged messages to the systemd journal",
+  "version": "0.1.0",
+  "release_status": "testing",
 
-   "generated_by": "Marti Raudsepp <marti@juffo.org>",
+  "maintainer": "Marti Raudsepp <marti@juffo.org>",
+  "generated_by": "Marti Raudsepp <marti@juffo.org>",
+  "provides": {
+  },
+  "license": {
+    "PostgreSQL": "http://www.postgresql.org/about/licence/"
+  },
+  "tags": [
+    "logging", "structured logging", "systemd", "journal", "maintenance",
+    "diagnostics"
+  ],
+  "resources": {
+    "bugtracker": {
+      "web": "https://github.com/intgr/pg_journal/issues"
+    },
+    "repository": {
+      "url": "git://github.com/intgr/pg_journal.git",
+      "web": "https://github.com/intgr/pg_journal",
+      "type": "git"
+    }
+  },
 
-
-   "meta-spec": {
-      "version": "1.0.0",
-      "url": "http://pgxn.org/meta/spec.txt"
-   }
+  "meta-spec": {
+    "version": "1.0.0",
+    "url": "http://pgxn.org/meta/spec.txt"
+  }
 }
