@@ -10,6 +10,20 @@
 #include "utils/elog.h"
 #include "utils/memutils.h"
 
+/**** Version detection */
+
+#ifdef __GNUC__
+# if PG_VERSION_NUM < 90200
+/*
+ * There's no way to detect whether the patch was already applied, so this is
+ * just a warning.
+ */
+#  warning "Building on PostgreSQL version earlier than 9.2. If the build fails,"
+#  warning "you need to patch PostgreSQL first. You can get the patch from:"
+#  warning "https://raw.github.com/intgr/pg_journal/master/patches/logging-hooks.patch"
+# endif
+#endif
+
 /**** Declarations */
 
 PG_MODULE_MAGIC;
