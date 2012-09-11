@@ -1,8 +1,11 @@
-pg\_journal
-===========
+Building pg\_journal
+====================
 
 This is a PostgreSQL preload module for sending log messages directly to the
 systemd journal log.
+
+This document explains how to build pg\_journal. For usage documentation and
+more info, please read the `doc/pg_journal.md` file.
 
 Prerequisites:
 
@@ -54,8 +57,6 @@ add the following line:
 
 You need to restart your server for this to take effect. After that, log
 messages are automatically sent to journal.
-
-For more details, please see the `doc/pg_journal` documentation file.
 
 Copyright and License
 ---------------------
