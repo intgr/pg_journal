@@ -198,6 +198,7 @@ append_fmt(StringInfo str, struct iovec *field, const char *fmt, ...)
 /* This extension allows gcc to check the format string */
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
 
+/* See backend/lib/stringinfo.c function appendStringInfo */
 static void
 append_fmt(StringInfo str, struct iovec *field, const char *fmt, ...)
 {
@@ -214,7 +215,8 @@ append_fmt(StringInfo str, struct iovec *field, const char *fmt, ...)
 		if (success)
 			break;
 
-		enlargeStringInfo(str, 256);
+		/* Double the buffer size and try again. */
+		enlargeStringInfo(str, str->maxlen);
 	}
 
 	field->iov_len = str->len - old_len;
