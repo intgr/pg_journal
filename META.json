@@ -2,8 +2,8 @@
   "name": "pg_journal",
   "abstract": "Log to systemd journal",
   "description": "Sends logged messages to the systemd journal",
-  "version": "0.1.0",
-  "release_status": "testing",
+  "version": "0.1.1",
+  "release_status": "stable",
 
   "maintainer": "Marti Raudsepp <marti@juffo.org>",
   "generated_by": "Marti Raudsepp <marti@juffo.org>",
@@ -13,8 +13,8 @@
     "PostgreSQL": "http://www.postgresql.org/about/licence/"
   },
   "tags": [
-    "logging", "structured logging", "systemd", "journal", "maintenance",
-    "diagnostics"
+    "log", "logging", "structured logging", "systemd", "journal",
+    "maintenance", "diagnostics"
   ],
   "resources": {
     "bugtracker": {
