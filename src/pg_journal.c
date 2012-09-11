@@ -1,4 +1,7 @@
 // vim: set noet sw=4 ts=4 :
+/* We override CODE_FILE= etc fields, don't let systemd add these */
+#define SD_JOURNAL_SUPPRESS_LOCATION 1
+
 #include <systemd/sd-journal.h>
 #include <syslog.h>
 
@@ -276,15 +279,18 @@ journal_emit_log(ErrorData *edata)
 		append_string(&buf, &fields[n++], "STATEMENT=", debug_query_string);
 
 	/*
-	 * These field names are also used by systemd itself. Not sure how useful
-	 * they are in practice.
+	 * These fields are normally added by systemd itself, but we override them
+	 * to contain the actual PostgreSQL logging call. Not sure how useful they
+	 * are in practice.
 	 */
+#ifdef SD_JOURNAL_SUPPRESS_LOCATION
 	if (edata->filename)
 		append_string(&buf, &fields[n++], "CODE_FILE=", edata->filename);
 	if (edata->lineno > 0)
 		append_fmt(&buf, &fields[n++],    "CODE_LINE=%d", edata->lineno);
 	if (edata->funcname)
 		append_string(&buf, &fields[n++], "CODE_FUNCTION=", edata->funcname);
+#endif /* SD_JOURNAL_SUPPRESS_LOCATION */
 
 	/*
 	 * Non-ErrorData fields. These field names are modeled after libpq
