@@ -42,8 +42,8 @@ static void journal_emit_log(ErrorData *edata);
 static emit_log_hook_type prev_emit_log_hook = NULL;
 /* If a failure occurs, report it to the server log the first time */
 static bool reported_failure = false;
-/* GUC pg_journal.omit_server_log = off */
-static bool skip_server_log = false;
+/* GUC pg_journal.passthrough_server_log = off */
+static bool passthrough_server_log = false;
 
 /**** Implementation */
 
@@ -75,9 +75,9 @@ _PG_init(void)
 	prev_emit_log_hook = emit_log_hook;
 	emit_log_hook = do_emit_log;
 
-	DefineBoolVariable("pg_journal.skip_server_log",
-			"Skip messages from server log if journal logging succeeds",
-			&skip_server_log);
+	DefineBoolVariable("pg_journal.passthrough_server_log",
+			"Duplicate messages to the server log even if journal logging succeeds",
+			&passthrough_server_log);
 }
 
 void
@@ -346,7 +346,7 @@ journal_emit_log(ErrorData *edata)
 	if (ret >= 0)
 	{
 		/* Successfully logged */
-		if (skip_server_log)
+		if (! passthrough_server_log)
 			edata->output_to_server = false;
 	}
 	else

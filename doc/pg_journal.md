@@ -25,11 +25,13 @@ You need to restart your server for this to take effect. After that, log
 messages are automatically sent to journal. pg\_journal follows the usual
 logging settings (`log_min_messages`, etc) to decide what to log.
 
-If you want to prevent logged messages from appearing in the normal server log,
-you can add the `skip_server_log` setting:
+By default, enabling pg\_journal prevents log messages from appearing in other
+log destinations (log file, syslog and csvlog). If you want to duplicate
+messages to other log destinations too, you can to add the
+`passthrough_server_log` setting:
 
     custom_variable_classes = 'pg_journal' # PostgreSQL 9.1 and earlier only
-    pg_journal.skip_server_log = on
+    pg_journal.passthrough_server_log = on
 
 Note that if journal logging fails for any reason, then pg\_journal falls back
 to the server log despite this setting, allowing you to debug the issue.
