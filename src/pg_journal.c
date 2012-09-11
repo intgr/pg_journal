@@ -194,6 +194,20 @@ append_string(StringInfo str, struct iovec *field, const char *key, const char *
 }
 
 static void
+append_string3(StringInfo str, struct iovec *field, const char *key,
+			   const char *s1, const char *s2, const char *s3)
+{
+	size_t old_len = str->len;
+
+	appendStringInfoString(str, key);
+	appendStringInfoString(str, s1);
+	appendStringInfoString(str, s2);
+	appendStringInfoString(str, s3);
+
+	field->iov_len = str->len - old_len;
+}
+
+static void
 append_fmt(StringInfo str, struct iovec *field, const char *fmt, ...)
 /* This extension allows gcc to check the format string */
 __attribute__((format(PG_PRINTF_ATTRIBUTE, 3, 4)));
@@ -252,9 +266,10 @@ journal_emit_log(ErrorData *edata)
 	}
 
 	if (edata->message)
-		append_fmt(&buf, &fields[n++], "MESSAGE=%s:  %s",
-												error_severity(edata->elevel),
-												edata->message);
+		append_string3(&buf, &fields[n++], "MESSAGE=",
+										   error_severity(edata->elevel),
+										   ":  ",
+										   edata->message);
 
 	append_fmt(&buf, &fields[n++], "PRIORITY=%d", elevel_to_syslog(edata->elevel));
 	append_fmt(&buf, &fields[n++], "PGLEVEL=%d", edata->elevel);
@@ -310,8 +325,10 @@ journal_emit_log(ErrorData *edata)
 		if (MyProcPort->remote_host && MyProcPort->remote_port &&
 			MyProcPort->remote_port[0] != '\0')
 		{
-			append_fmt(&buf, &fields[n++], "PGHOST=%s:%s", MyProcPort->remote_host,
-					   MyProcPort->remote_port);
+			append_string3(&buf, &fields[n++], "PGHOST=",
+											   MyProcPort->remote_host,
+											   ":",
+											   MyProcPort->remote_port);
 		}
 		else if (MyProcPort->remote_host)
 			append_string(&buf, &fields[n++], "PGHOST=", MyProcPort->remote_host);
