@@ -13,6 +13,21 @@ Prerequisites:
 * PostgreSQL version 9.2+ (earlier versions supported with a server patch).
 * systemd v38 or newer with libsystemd-journal installed.
 
+### Caveats
+
+pg\_journal is not yet finished. The current version has some caveats:
+
+* `journalctl` cannot currently display multiline log messages, such as
+  `log_statement` messages for multiline queries. These messages are shown as:
+
+        Sep 12 00:45:47 hostname postgres[3526]: [123B blob data]
+
+* Currently, the default `journalctl` output only displays the main log message
+  without HINT/DETAIL etc lines. See below how to access the other fields.
+
+* Under high log traffic, systemd can drop some messages. This may be due to a
+  bug or limitation in the current systemd version.
+
 Configuration
 -------------
 
