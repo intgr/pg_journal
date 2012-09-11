@@ -136,6 +136,41 @@ elevel_to_syslog(int elevel)
 }
 
 /*
+ * error_severity --- get localized string representing elevel
+ * See utils/error/elog.c function error_severity
+ */
+static const char *
+error_severity(int elevel)
+{
+	switch (elevel)
+	{
+		case DEBUG1:
+		case DEBUG2:
+		case DEBUG3:
+		case DEBUG4:
+		case DEBUG5:
+			return _("DEBUG");
+		case LOG:
+		case COMMERROR:
+			return _("LOG");
+		case INFO:
+			return _("INFO");
+		case NOTICE:
+			return _("NOTICE");
+		case WARNING:
+			return _("WARNING");
+		case ERROR:
+			return _("ERROR");
+		case FATAL:
+			return _("FATAL");
+		case PANIC:
+			return _("PANIC");
+		default:
+			return "???";
+	}
+}
+
+/*
  * This is a slight abuse of the StringInfo system. We're simply concatenating
  * together lots of fields and storing their lengths. Once the whole string
  * is ready, we get pointers based on the lengths.
@@ -211,15 +246,17 @@ journal_emit_log(ErrorData *edata)
 				"a63699368b304b4cb51bce5644736306");
 	}
 
+	if (edata->message)
+		append_fmt(&buf, &fields[n++], "MESSAGE=%s:  %s",
+												error_severity(edata->elevel),
+												edata->message);
+
 	append_fmt(&buf, &fields[n++], "PRIORITY=%d", elevel_to_syslog(edata->elevel));
 	append_fmt(&buf, &fields[n++], "PGLEVEL=%d", edata->elevel);
 
 	if (edata->sqlerrcode)
 		append_string(&buf, &fields[n++], "SQLSTATE=",
 										 unpack_sql_state(edata->sqlerrcode));
-
-	if (edata->message)
-		append_string(&buf, &fields[n++], "MESSAGE=", edata->message);
 
 	if (edata->detail_log)
 		append_string(&buf, &fields[n++], "DETAIL=", edata->detail_log);
