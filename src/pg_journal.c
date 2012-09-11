@@ -21,8 +21,8 @@
  * There's no way to detect whether the patch was already applied, so this is
  * just a warning.
  */
-#  warning "Building on PostgreSQL version earlier than 9.2. If the build fails,"
-#  warning "you need to patch PostgreSQL first. You can get the patch from:"
+#  warning "Building on PostgreSQL version earlier than 9.2. If the build fails, you"
+#  warning "need to patch the PostgreSQL server first. You can get the patch from:"
 #  warning "https://raw.github.com/intgr/pg_journal/master/patches/logging-hooks.patch"
 # endif
 #endif
@@ -190,7 +190,7 @@ append_string(StringInfo str, struct iovec *field, const char *key, const char *
 	appendStringInfoString(str, key);
 	appendStringInfoString(str, value);
 
-	field->iov_len  = str->len - old_len;
+	field->iov_len = str->len - old_len;
 }
 
 static void
@@ -217,7 +217,7 @@ append_fmt(StringInfo str, struct iovec *field, const char *fmt, ...)
 		enlargeStringInfo(str, 256);
 	}
 
-	field->iov_len  = str->len - old_len;
+	field->iov_len = str->len - old_len;
 }
 
 #define MAX_FIELDS	 17 /* NB! Keep this in sync when adding fields! */
@@ -241,7 +241,7 @@ journal_emit_log(ErrorData *edata)
 
 	initStringInfo(&buf);
 
-	/* Assign a MESSAGE_ID to statement logging */
+	/* Assign a MESSAGE_ID to log_statement logging */
 	if (edata->hide_stmt && debug_query_string != NULL &&
 		memcmp(edata->message, "statement: ", 11) == 0)
 	{
@@ -293,7 +293,7 @@ journal_emit_log(ErrorData *edata)
 #endif /* SD_JOURNAL_SUPPRESS_LOCATION */
 
 	/*
-	 * Non-ErrorData fields. These field names are modeled after libpq
+	 * Non-ErrorData fields. These field names are named after libpq
 	 * environment vars:
 	 * http://www.postgresql.org/docs/current/static/libpq-envars.html
 	 */
@@ -321,7 +321,7 @@ journal_emit_log(ErrorData *edata)
 	if (n > MAX_FIELDS)
 	{
 		/*
-		 * Oops, we've probably overwritten something else on the stack!
+		 * Oops, someone forgot to update MAX_FIELDS definition!
 		 * Report error and die.
 		 */
 		ereport(FATAL,
@@ -354,10 +354,9 @@ journal_emit_log(ErrorData *edata)
 		if (! reported_failure)
 		{
 			ereport(WARNING,
-					(errmsg("pg_journal: failed logging message with "
-							"%d fields: %s",
+					(errmsg("pg_journal: could not log message with %d fields: %s",
 							n, strerror(-ret))));
-			/* Prevent spamming the log if journal is failing */
+			/* Prevent spamming the log on subsequent failures */
 			reported_failure = true;
 		}
 	}
