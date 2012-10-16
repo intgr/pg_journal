@@ -126,6 +126,10 @@ pg\_journal adds the following log fields to log messages:
 Changelog
 ---------
 
+0.1.1.1 (2012-10-16)
+
+* Included a LICENSE file with the source package. No need to rebuild.
+
 0.1.1 (2012-09-12)
 
 * The meaning of `skip_server_log` setting was inverted and renamed to `passthrough_server_log`
