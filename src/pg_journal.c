@@ -6,8 +6,8 @@
 #include <syslog.h>
 
 #include "postgres.h"
-#include "fmgr.h"
 #include "miscadmin.h"
+#include "lib/stringinfo.h"
 #include "libpq/libpq-be.h"
 #include "tcop/tcopprot.h"
 #include "utils/elog.h"
