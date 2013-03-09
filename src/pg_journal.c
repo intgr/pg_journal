@@ -236,7 +236,7 @@ append_fmt(StringInfo str, struct iovec *field, const char *fmt, ...)
 	field->iov_len = str->len - old_len;
 }
 
-#define MAX_FIELDS	 17 /* NB! Keep this in sync when adding fields! */
+#define MAX_FIELDS	 22 /* NB! Keep this in sync when adding fields! */
 
 static void
 journal_emit_log(ErrorData *edata)
@@ -294,6 +294,19 @@ journal_emit_log(ErrorData *edata)
 
 	if (!edata->hide_stmt && debug_query_string)
 		append_string(&buf, &fields[n++], "STATEMENT=", debug_query_string);
+
+#if PG_VERSION_NUM >= 90300
+	if (edata->schema_name)
+		append_string(&buf, &fields[n++], "SCHEMA=", edata->schema_name);
+	if (edata->table_name)
+		append_string(&buf, &fields[n++], "TABLE=", edata->table_name);
+	if (edata->column_name)
+		append_string(&buf, &fields[n++], "COLUMN=", edata->column_name);
+	if (edata->datatype_name)
+		append_string(&buf, &fields[n++], "DATATYPE=", edata->datatype_name);
+	if (edata->constraint_name)
+		append_string(&buf, &fields[n++], "CONSTRAINT=", edata->constraint_name);
+#endif /* PG_VERSION_NUM >= 90300 */
 
 	/*
 	 * These fields are normally added by systemd itself, but we override them

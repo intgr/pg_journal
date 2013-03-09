@@ -115,6 +115,11 @@ pg\_journal adds the following log fields to log messages:
 * `QUERY`: Internal query.
 * `CONTEXT`: Context where the error occurred.
 * `STATEMENT`: Statement/query that caused this error.
+* `SCHEMA`: Schema containing the object related to the error. (PostgreSQL versions 9.3 and later)
+* `TABLE`: The table name this error refers to. (9.3+)
+* `COLUMN`: Table column name. (9.3+)
+* `DATATYPE`: Data type. (9.3+)
+* `CONSTRAINT`: Constriant name. (9.3+)
 * `CODE_FILE`: PostgreSQL source file name where this error was reported.
 * `CODE_LINE`: PostgreSQL source line number where this error was reported.
 * `CODE_FUNCTION`: PostgreSQL internal function name.
@@ -125,6 +130,11 @@ pg\_journal adds the following log fields to log messages:
 
 Changelog
 ---------
+
+UNRELEASED
+
+* Fix build with PostgreSQL 9.3 and later.
+* Add new fields SCHEMA, TABLE, COLUMN, DATATYPE, CONSTRAINT, introduced in PostgreSQL 9.3.
 
 0.1.1.1 (2012-10-16)
 
