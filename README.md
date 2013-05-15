@@ -53,7 +53,7 @@ Once pg\_journal is installed, you can enable it in your configuration file.
 Find the `postgresql.conf` file (usually in your PostgreSQL data directory) and
 add the following line:
 
-    shared_preload_libaries = 'pg_journal'
+    shared_preload_libraries = 'pg_journal'
 
 You need to restart your server for this to take effect. After that, log
 messages are automatically sent to journal.
