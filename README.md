@@ -5,12 +5,27 @@ This is a PostgreSQL preload module for sending log messages directly to the
 systemd journal log.
 
 This document explains how to build pg\_journal. For usage documentation and
-more info, please read the `doc/pg_journal.md` file.
+more info, please see the `doc/pg_journal.md` file or [read the latest version
+online](http://pgxn.org/dist/pg_journal/doc/pg_journal.html).
 
 Prerequisites:
 
 * PostgreSQL version 9.2+ (earlier versions supported with a server patch).
 * systemd v38 or newer with libsystemd-journal installed.
+
+Quick start
+-----------
+
+To build and install this extension, simply run:
+
+    make
+    sudo make install
+
+Then add the following line to your `postgresql.conf`:
+
+    shared_preload_libraries = 'pg_journal'
+
+This change requires a restart of PostgreSQL.
 
 Installation
 ------------
