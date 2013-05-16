@@ -44,6 +44,8 @@ static emit_log_hook_type prev_emit_log_hook = NULL;
 static bool reported_failure = false;
 /* GUC pg_journal.passthrough_server_log = off */
 static bool passthrough_server_log = false;
+/* Cache syslog_ident */
+static char *syslog_ident = NULL;
 
 /**** Implementation */
 
@@ -72,12 +74,22 @@ DefineBoolVariable(const char *name, const char *short_desc, bool *value_addr)
 void
 _PG_init(void)
 {
+	MemoryContext oldcontext;
+
 	prev_emit_log_hook = emit_log_hook;
 	emit_log_hook = do_emit_log;
 
 	DefineBoolVariable("pg_journal.passthrough_server_log",
 			"Duplicate messages to the server log even if journal logging succeeds",
 			&passthrough_server_log);
+
+	/*
+	 * We don't want to perform this GUC lookup for each log message. Sadly
+	 * there is no nice way to get notified when this changes.
+	 */
+	oldcontext = MemoryContextSwitchTo(TopMemoryContext);
+	syslog_ident = strdup(GetConfigOption("syslog_ident", false, false));
+	MemoryContextSwitchTo(oldcontext);
 }
 
 void
@@ -236,7 +248,7 @@ append_fmt(StringInfo str, struct iovec *field, const char *fmt, ...)
 	field->iov_len = str->len - old_len;
 }
 
-#define MAX_FIELDS	 22 /* NB! Keep this in sync when adding fields! */
+#define MAX_FIELDS	 23 /* NB! Keep this in sync when adding fields! */
 
 static void
 journal_emit_log(ErrorData *edata)
@@ -349,6 +361,8 @@ journal_emit_log(ErrorData *edata)
 
 	if (application_name && application_name[0] != '\0')
 		append_string(&buf, &fields[n++], "PGAPPNAME=", application_name);
+
+	append_string(&buf, &fields[n++], "SYSLOG_IDENTIFIER=", syslog_ident);
 
 	if (n > MAX_FIELDS)
 	{

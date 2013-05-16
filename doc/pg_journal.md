@@ -127,12 +127,15 @@ pg\_journal adds the following log fields to log messages:
 * `PGDATABASE`: Database where the client was connected to.
 * `PGHOST`: Hostname or host:port where the client connected from.
 * `PGAPPNAME`: Value of the `application_name` variable.
+* `SYSLOG_IDENTIFIER`: Value of the `syslog_ident` config option. (Change requires restart)
 
 Changelog
 ---------
 
 UNRELEASED
 
+* `SYSLOG_IDENTIFIER` is now set from the `syslog_ident` GUC variable,
+  rather than process title, which changes. Makes journalctl output prettier.
 * Fix build with PostgreSQL 9.3 and later.
 * Add new fields SCHEMA, TABLE, COLUMN, DATATYPE, CONSTRAINT, introduced in PostgreSQL 9.3.
 
