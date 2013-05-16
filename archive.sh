@@ -2,8 +2,8 @@
 set -e
 
 if [[ -z "$1" ]]; then
-  VER=HEAD
-  TAG=HEAD
+  TAG="$(git describe)"
+  VER="${TAG#v}"
 else
   VER="$1"
   TAG="v$VER"
