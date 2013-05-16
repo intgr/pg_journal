@@ -132,7 +132,7 @@ pg\_journal adds the following log fields to log messages:
 Changelog
 ---------
 
-UNRELEASED
+0.2.0 (2013-05-16)
 
 * `SYSLOG_IDENTIFIER` is now set from the `syslog_ident` GUC variable,
   rather than process title, which changes. Makes journalctl output prettier.

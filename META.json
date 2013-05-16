@@ -2,7 +2,7 @@
   "name": "pg_journal",
   "abstract": "Log to systemd journal",
   "description": "Sends logged messages to the systemd journal",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "release_status": "stable",
 
   "maintainer": "Marti Raudsepp <marti@juffo.org>",
