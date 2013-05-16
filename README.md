@@ -61,8 +61,9 @@ messages are automatically sent to journal.
 Copyright and License
 ---------------------
 
-Copyright (c) 2012 Marti Raudsepp
+Copyright (c) 2012-2013 Marti Raudsepp
 
 pg\_journal and all related files are available under [The PostgreSQL
-License](http://www.opensource.org/licenses/PostgreSQL)
+License](http://www.opensource.org/licenses/PostgreSQL). See LICENSE file for
+details.
 
