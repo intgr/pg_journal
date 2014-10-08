@@ -49,7 +49,7 @@ static char *syslog_ident = NULL;
 
 /**** Implementation */
 
-/* Convinience wrapper for DefineCustomBoolVariable */
+/* Convenience wrapper for DefineCustomBoolVariable */
 static void
 DefineBoolVariable(const char *name, const char *short_desc, bool *value_addr)
 {
