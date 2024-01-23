@@ -230,16 +230,29 @@ append_fmt(StringInfo str, struct iovec *field, const char *fmt, ...)
 {
 	size_t old_len = str->len;
 	va_list args;
+#if PG_VERSION_NUM >= 90400
+	int needed;
+#else
 	bool success;
+#endif
 
 	/* appendStringInfoVA can fail due to insufficient space */
 	while (1) {
 		va_start(args, fmt);
+#if PG_VERSION_NUM >= 90400
+		needed = appendStringInfoVA(str, fmt, args);
+#else
 		success = appendStringInfoVA(str, fmt, args);
+#endif
 		va_end(args);
 
+#if PG_VERSION_NUM >= 90400
+		if (needed == 0)
+			break;
+#else
 		if (success)
 			break;
+#endif
 
 		/* Double the buffer size and try again. */
 		enlargeStringInfo(str, str->maxlen);
